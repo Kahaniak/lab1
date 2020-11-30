@@ -12,18 +12,68 @@ class HomeScreen extends StatefulWidget {
   _HomeScreenState createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
+  Animation _snowyOpacityAnimation;
+  Animation _snowyFallBigOneAnimation;
+  Animation _snowyFallBigTwoAnimation;
+  Animation _snowyFallBigThreeAnimation;
+  Animation _snowyFallSmallOneAnimation;
+  Animation _snowyFallSmallTwoAnimation;
+  Animation _snowyFallSmallThreeAnimation;
+
+  AnimationController _sunnyRotatingAnimation;
+  AnimationController _sunnySizeAnimation;
+
+  AnimationController controller;
+  Animation _cloudyWindAnimation;
+  CurveTween _scaleCurve;
+
   @override
   void initState() {
     super.initState();
+    controller = AnimationController(
+        vsync: this,
+        duration: Duration(seconds: 2),
+    );
 
-    context.read<DayForecastBloc>().add(
-          GetWeekForecast(
-            49.842957,
-            24.031111,
-            "Lviv"
-          ),
-        );
+    _sunnyRotatingAnimation = AnimationController(
+      duration: const Duration(seconds: 8),
+      vsync: this,
+    )..repeat();
+
+    _sunnySizeAnimation = AnimationController(
+      duration: const Duration(milliseconds: 3500),
+      vsync: this,
+    )
+      ..addStatusListener((status) {
+        if (status == AnimationStatus.completed) {
+          _sunnySizeAnimation.reverse();
+        } else if (status == AnimationStatus.dismissed) {
+          _sunnySizeAnimation.forward();
+        }
+      })
+      ..forward();
+
+    _cloudyWindAnimation = Tween<double>(begin: 0.0, end: 15.0).animate(CurvedAnimation(parent: controller, curve: Curves.easeIn));
+
+    _snowyOpacityAnimation = Tween<double>(begin: 1.0, end: 0.0).animate(CurvedAnimation(parent: controller, curve: Curves.easeIn));
+    _snowyFallBigOneAnimation = Tween<double>(begin: 18.0, end: 66.0).animate(CurvedAnimation(parent: controller, curve: Curves.linear));
+    _snowyFallBigTwoAnimation = Tween<double>(begin: 25.0, end: 85.0).animate(CurvedAnimation(parent: controller, curve: Curves.linear));
+    _snowyFallBigThreeAnimation = Tween<double>(begin: 0.0, end: 55.0).animate(CurvedAnimation(parent: controller, curve: Curves.linear));
+
+    _snowyFallSmallOneAnimation = Tween<double>(begin: 6.0, end: 22.0).animate(CurvedAnimation(parent: controller, curve: Curves.linear));
+    _snowyFallSmallTwoAnimation = Tween<double>(begin: 10.0, end: 27.0).animate(CurvedAnimation(parent: controller, curve: Curves.linear));
+    _snowyFallSmallThreeAnimation = Tween<double>(begin: 0.0, end: 18.0).animate(CurvedAnimation(parent: controller, curve: Curves.linear));
+
+
+
+    _scaleCurve = CurveTween(curve: Curves.elasticInOut);
+    controller.addListener(() {
+      setState(() {});
+    });
+    controller.repeat();
+
+    context.read<DayForecastBloc>().add(GetWeekForecast(49.842957, 24.031111, "Lviv"));
   }
 
   @override
@@ -123,11 +173,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
             SizedBox(width: 70),
-            Icon(
-              Icons.wb_sunny,
-              color: Colors.amber,
-              size: 140,
-            ),
+            _createWeatherIcon(dayForecast, 140),
           ],
         ),
       ),
@@ -177,11 +223,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _cardWeather(DayForecast dayForecast) {
     return Column(
       children: [
-        Icon(
-          Icons.wb_sunny,
-          color: Colors.amber,
-          size: 40,
-        ),
+        _createWeatherIcon(dayForecast, 45),
         SizedBox(height: 20),
         Stack(
           children: [
@@ -208,6 +250,200 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           ],
+        ),
+      ],
+    );
+  }
+
+  Widget _createWeatherIcon(DayForecast dayForecast, double size) {
+    final temp = dayForecast.temperature;
+    if (temp > 10) {
+      return _createSunny(size);
+    } else if (temp > 0 && temp <= 10) {
+      return _createCloudy(size);
+    } else {
+      return _createSnowy(size);
+    }
+  }
+
+  Widget _createSunny(double size) {
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        Container(
+          width: size * 1.5,
+          height: size * 1.4,
+        ),
+        ScaleTransition(
+          scale: _sunnySizeAnimation.drive(_scaleCurve),
+          child: Align(
+            alignment: Alignment.center,
+            child: Container(
+              width: size * 1.3,
+              height: size * 1.3,
+              decoration: BoxDecoration(
+                color: Colors.yellowAccent.withOpacity(0.5),
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+        ),
+        Align(
+          alignment: Alignment.center,
+          child: RotationTransition(
+            turns: _sunnyRotatingAnimation,
+            child: Icon(
+              Icons.wb_sunny,
+              color: Colors.amber,
+              size: size,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _createCloudy(double size) {
+    return Stack(
+      children: [
+        Container(
+          width: size * 1.5,
+          height: size * 1.4,
+        ),
+        Positioned(
+          top: 10,
+          left: 10 - _cloudyWindAnimation.value,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Container(
+                width: size * 0.45,
+                height: size * 0.1,
+                decoration: BoxDecoration(
+                  color: Colors.blueAccent,
+                  borderRadius: BorderRadius.circular(5),
+                ),
+              ),
+              SizedBox(height: size * 0.07),
+              Container(
+                width: size * 0.65,
+                height: size * 0.1,
+                decoration: BoxDecoration(
+                  color: Colors.blueAccent,
+                  borderRadius: BorderRadius.circular(5),
+                ),
+              ),
+              SizedBox(height: size * 0.07),
+              Container(
+                width: size * 0.40,
+                height: size * 0.1,
+                decoration: BoxDecoration(
+                  color: Colors.blueAccent,
+                  borderRadius: BorderRadius.circular(5),
+                ),
+              ),
+            ],
+          ),
+        ),
+        Positioned(
+          top: 0,
+          left: _cloudyWindAnimation.value + 5,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Container(
+                width: size,
+                height: size,
+                child: Icon(
+                  Icons.cloud,
+                  color: Colors.indigo,
+                  size: size,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _createSnowy(double size) {
+    return Stack(
+      children: [
+        Container(
+          width: size,
+          height: size * 1.4,
+        ),
+        Positioned(
+          top: size * 0.6 + (size > 80 ? _snowyFallBigThreeAnimation.value : _snowyFallSmallThreeAnimation.value),
+          left: size * 0.7,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Container(
+                height: size / 4,
+                width: size / 4,
+                child: Opacity(
+                  opacity: _snowyOpacityAnimation.value,
+                  child: Icon(
+                    Icons.ac_unit,
+                    color: Colors.blue,
+                    size: size / 4,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        Positioned(
+          top: size * 0.6 + (size > 80 ? _snowyFallBigTwoAnimation.value : _snowyFallSmallTwoAnimation.value),
+          left: size * 0.35,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Container(
+                height: size / 4,
+                width: size / 4,
+                child: Opacity(
+                  opacity: _snowyOpacityAnimation.value,
+                  child: Icon(
+                    Icons.ac_unit,
+                    color: Colors.blue,
+                    size: size / 4,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        Positioned(
+          top: size * 0.6 + (size > 80 ? _snowyFallBigOneAnimation.value : _snowyFallSmallOneAnimation.value),
+          left: size * 0.05,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Container(
+                height: size / 4,
+                width: size / 4,
+                child: Opacity(
+                  opacity: _snowyOpacityAnimation.value,
+                  child: Icon(
+                    Icons.ac_unit,
+                    color: Colors.blue,
+                    size: size / 4,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        Positioned(
+          top: 0,
+          child: Icon(
+            Icons.cloud,
+            color: Color.fromRGBO(86, 114, 214, 1),
+            size: size,
+          ),
         ),
       ],
     );
@@ -247,3 +483,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 }
+
+
+
